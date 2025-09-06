@@ -1,47 +1,25 @@
 pipeline {
     agent any
-
-    environment {
-        DOCKER_IMAGE = "myapp:latest"
-        REGISTRY = "myregistry.local"
-        SERVERS = "221.132.18.36"  
-    }
-
     stages {
+        stage('Clone Repository') {
+            steps {
+                echo "Cloning repository..."
+                checkout scm
+            }
+        }
         stage('Build Docker Image') {
             steps {
-                sh """
-                  echo "==> Building Docker image..."
-                  docker build -t $DOCKER_IMAGE .
-                """
+                echo "Building Docker image..."
+                sh 'docker build -t my-web-app .'
             }
         }
-
-        stage('Push Docker Image to Registry') {
+        stage('Run Docker Container') {
             steps {
-                sh """
-                  echo "==> Tag & push image to registry"
-                  docker tag $DOCKER_IMAGE $REGISTRY/$DOCKER_IMAGE
-                  docker push $REGISTRY/$DOCKER_IMAGE
-                """
+                echo "Running Docker container..."
+                sh 'docker run -d -p 9080:80 --name my-web-app my-web-app || true'
             }
         }
-
-        stage('Deploy to Staging/QA') {
-            steps {
-                sh """
-                  echo "==> Deploy to staging servers..."
-                  for server in $SERVERS; do
-                    echo "Deploying to \$server (staging)..."
-                    ssh user@\$server "docker pull $REGISTRY/$DOCKER_IMAGE && \
-                                       docker stop myapp || true && \
-                                       docker rm myapp || true && \
-                                       docker run -d --name myapp -p 7080:80 $REGISTRY/$DOCKER_IMAGE"
-                  done
-                """
-            }
-        }
-
+    }
         stage('Approval Required') {
             steps {
                 script {
